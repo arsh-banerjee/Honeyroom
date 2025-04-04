@@ -9,8 +9,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain_openai import OpenAI
 
-# Optionally set your OpenAI key here (local dev only)
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "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")
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 # Load documents
 def load_documents(path):
