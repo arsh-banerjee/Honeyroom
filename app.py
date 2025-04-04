@@ -40,7 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Show logo
-st.image("image.png", use_container_width=True)
+st.image("image.png", width=300)
 
 # Use Streamlit secrets for API key (secure deployment)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
@@ -71,7 +71,7 @@ st.write("AI-powered search for effortless buy-side diligence.")
 
 vectorstore = setup_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-qa = RetrievalQA.from_chain_type(llm=OpenAI(), retriever=retriever)
+qa = RetrievalQA.from_chain_type(llm=OpenAI(), retriever=retriever, return_source_documents=True)
 
 user_query = st.text_input("Your question:")
 
@@ -83,13 +83,21 @@ if user_query:
 
         st.subheader("Sources")
         for doc in result.get('source_documents', []):
-            st.markdown(f"**{os.path.basename(doc.metadata['source'])}**: {doc.page_content[:300]}...")
+            filename = os.path.basename(doc.metadata['source'])
+            file_path = doc.metadata['source']
+            with st.expander(f"Preview: {filename}"):
+                if file_path.lower().endswith(".pdf"):
+                    with open(file_path, "rb") as f:
+                        st.download_button(label=f"Download {filename}", data=f, file_name=filename)
+                        st.markdown("PDF preview not supported inline. Please download to view.")
+                else:
+                    st.write(doc.page_content[:500])
 
         feedback = st.radio("Was this helpful?", ("👍", "👎"))
         if feedback == "👎":
             with st.spinner("Trying again with different context..."):
                 retriever = vectorstore.as_retriever(search_kwargs={"k": 6})
-                qa = RetrievalQA.from_chain_type(llm=OpenAI(), retriever=retriever)
+                qa = RetrievalQA.from_chain_type(llm=OpenAI(), retriever=retriever, return_source_documents=True)
                 result = qa({"query": user_query})
                 st.subheader("Retry Answer")
                 st.write(result['result'])
