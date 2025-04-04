@@ -9,6 +9,40 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain_openai import OpenAI
 
+# Set Streamlit page config with custom title and favicon
+st.set_page_config(page_title="Honeyroom AI", page_icon="🍯", layout="wide")
+
+# Inject custom CSS for theme
+st.markdown("""
+    <style>
+    body {
+        background-color: #fde68a;
+        color: black !important;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    .stApp {
+        background-color: #fde68a;
+        color: black !important;
+    }
+    .stTextInput>div>div>input {
+        background-color: #fff3c4;
+        color: black;
+    }
+    .stButton>button {
+        background-color: #facc15;
+        color: black;
+        font-weight: bold;
+    }
+    .stMarkdown, .stRadio label, .stSubheader, .stTextInput label, .stTextInput>div>label, .stRadio>div>label {
+        color: black !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Show logo
+st.image("image.png", use_column_width=False, width=400)
+
+# Use Streamlit secrets for API key (secure deployment)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 # Load documents
@@ -32,8 +66,8 @@ def setup_vectorstore():
     vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
 
-st.title("AI Deal Room Assistant")
-st.write("Ask a question about the documents in the data room.")
+st.title("Ask Honeyroom 🐝")
+st.write("AI-powered search for effortless buy-side diligence.")
 
 vectorstore = setup_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
