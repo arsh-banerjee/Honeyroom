@@ -7,3 +7,4 @@ PyMuPDF
 langchain-community 
 langchain-openai 
 langchain-huggingface
+pypdf
