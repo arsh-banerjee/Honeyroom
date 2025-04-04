@@ -40,7 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Show logo
-st.image("image.png", use_column_width=False, width=400)
+st.image("image.png", use_container_width=True)
 
 # Use Streamlit secrets for API key (secure deployment)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
