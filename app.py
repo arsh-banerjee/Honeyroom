@@ -2,12 +2,13 @@
 import os
 import glob
 import streamlit as st
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain_openai import OpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Set Streamlit page config with custom title and favicon
 st.set_page_config(page_title="Honeyroom AI", page_icon="🍯", layout="wide")
@@ -62,7 +63,7 @@ def setup_vectorstore():
     raw_docs = load_documents("data")
     splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = splitter.split_documents(raw_docs)
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="./models/all-MiniLM-L6-v2")
     vectorstore = FAISS.from_documents(chunks, embeddings)
     return vectorstore
 
