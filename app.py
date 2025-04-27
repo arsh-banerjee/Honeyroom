@@ -7,7 +7,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.chains import RetrievalQA
-from langchain_openai import OpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from PyPDF2 import PdfReader
 from langchain_core.documents import Document
 
@@ -47,6 +47,13 @@ st.image("image.png", width=300)
 # Use Streamlit secrets for API key (secure deployment)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
+import fitz  # PyMuPDF
+import io
+
+# Resize and re-encode PDF for iframe preview
+
+
+
 # Load documents
 def load_documents(path):
     docs = []
@@ -81,7 +88,7 @@ st.write("AI-powered search for effortless buy-side diligence.")
 
 vectorstore = setup_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-qa = RetrievalQA.from_chain_type(llm=OpenAI(), retriever=retriever, return_source_documents=True)
+qa = RetrievalQA.from_chain_type(llm=ChatOpenAI(model_name="gpt-3.5-turbo-16k"), retriever=retriever, return_source_documents=True)
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -114,10 +121,10 @@ if user_input:
                 st.chat_message("ai").markdown(f"**Preview: {filename}**")
                 if file_path.lower().endswith(".pdf"):
                     try:
-                        with open(file_path, "rb") as f:
-                            data = f.read()
-                            base64_pdf = base64.b64encode(data).decode("utf-8")
-                            iframe_html = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="80%" height="600px" type="application/pdf"></iframe>'
+                        github_raw_base = "https://raw.githubusercontent.com/arsh-banerjee/Honeyroom/main/data"
+                        github_pdf_url = f"{github_raw_base}/{filename}"
+                        with st.expander("🔍 Click to preview this PDF"):
+                            iframe_html = f'<iframe src="https://docs.google.com/gview?url={github_pdf_url}&embedded=true" width="100%" height="600px"></iframe>'
                             st.markdown(iframe_html, unsafe_allow_html=True)
                     except Exception as e:
                         st.warning("Could not preview this PDF. You can still download it below.")
