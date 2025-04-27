@@ -6,7 +6,7 @@ import base64
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.chains import RetrievalQA
+from langchain.chains import ConversationalRetrievalChain
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from PyPDF2 import PdfReader
 from langchain_core.documents import Document
@@ -88,7 +88,7 @@ st.write("AI-powered search for effortless buy-side diligence.")
 
 vectorstore = setup_vectorstore()
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-qa = RetrievalQA.from_chain_type(llm=ChatOpenAI(model_name="gpt-3.5-turbo-16k"), retriever=retriever, return_source_documents=True)
+qa = ConversationalRetrievalChain.from_llm(ChatOpenAI(model_name="gpt-3.5-turbo-16k"), retriever=retriever, return_source_documents=True)
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -118,13 +118,18 @@ if user_input:
 
             for file_path, content in list(unique_sources.items())[:1]:
                 filename = os.path.basename(file_path)
-                st.chat_message("ai").markdown(f"**Preview: {filename}**")
+                # Defer preview rendering to after full chat
+                github_raw_base = "https://raw.githubusercontent.com/arsh-banerjee/Honeyroom/main/data"
+                github_pdf_url = f"{github_raw_base}/{filename}"
+                preview_info = f"**Preview: {filename}**"
+                st.session_state.chat_history.append(("ai_preview", (preview_info, github_pdf_url)))
                 if file_path.lower().endswith(".pdf"):
                     try:
                         github_raw_base = "https://raw.githubusercontent.com/arsh-banerjee/Honeyroom/main/data"
                         github_pdf_url = f"{github_raw_base}/{filename}"
                         with st.expander("🔍 Click to preview this PDF"):
-                            iframe_html = f'<iframe src="https://docs.google.com/gview?url={github_pdf_url}&embedded=true" width="100%" height="600px"></iframe>'
+                            viewer_url = f"https://mozilla.github.io/pdf.js/web/viewer.html?file={github_pdf_url}"
+                            iframe_html = f'<iframe src="{viewer_url}" width="100%" height="600px" frameborder="0"></iframe>'
                             st.markdown(iframe_html, unsafe_allow_html=True)
                     except Exception as e:
                         st.warning("Could not preview this PDF. You can still download it below.")
@@ -137,19 +142,37 @@ if user_input:
 
     else:
         with st.spinner("Thinking..."):
-            result = qa({"query": user_input})
-            st.session_state.last_result = result
-            answer = result['result']
+            result = qa({"question": user_input, "chat_history": [(msg[0], msg[1]) for msg in st.session_state.chat_history if msg[0] in ("user", "ai")]})
+        sources = result.get('source_documents', [])
+        answer = result['answer']
+
+        # Retry logic if answer is vague or empty
+        fallback_phrases = ["I don't know", "no information", "not mentioned"]
+        if any(p in answer.lower() for p in fallback_phrases):
+            retriever_retry = vectorstore.as_retriever(search_kwargs={"k": 8})
+            qa_retry = ConversationalRetrievalChain.from_llm(ChatOpenAI(model_name="gpt-3.5-turbo-16k"), retriever=retriever_retry, return_source_documents=True)
+            result = qa_retry({"question": user_input, "chat_history": [(msg[0], msg[1]) for msg in st.session_state.chat_history if msg[0] in ("user", "ai")]})
+            answer = result['answer']
             sources = result.get('source_documents', [])
 
-            response = answer
-            if sources:
-                response += "\n\nWould you like to see where this came from? Just ask."
-            else:
-                response += "\n\nLet me know if you'd like me to try again with a different approach."
+        st.session_state.last_result = result
 
-            st.session_state.chat_history.append(("ai", response))
+        response = answer
+        if sources:
+            response += "\n\nWould you like to see where this came from? Just ask."
+        else:
+            response += "\n\nLet me know if you'd like me to try again with a different approach."
+
+        st.session_state.chat_history.append(("ai", response))
 
 # Render conversation
 for role, message in st.session_state.chat_history:
-    st.chat_message(role).markdown(message)
+    if role == "ai_preview":
+        label, url = message
+        with st.chat_message("ai"):
+            st.markdown(label)
+            with st.expander("🔍 Click to preview this PDF"):
+                iframe_html = f'<iframe src="https://mozilla.github.io/pdf.js/web/viewer.html?file={url}" width="100%" height="600px" frameborder="0"></iframe>'
+                st.markdown(iframe_html, unsafe_allow_html=True)
+    else:
+        st.chat_message(role).markdown(message)
