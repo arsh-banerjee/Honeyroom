@@ -8,3 +8,5 @@ langchain-community
 langchain-openai 
 langchain-huggingface
 pypdf
+PyPDF2
+tiktoken
